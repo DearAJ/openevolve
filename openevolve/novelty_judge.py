@@ -3,6 +3,7 @@ Adapted from SakanaAI/ShinkaEvolve (Apache-2.0 License)
 Original source: https://github.com/SakanaAI/ShinkaEvolve/blob/main/shinka/llm/embedding.py
 
 Prompt templates for novelty judging using LLMs.
+新颖度判别逻辑，辅助质量-多样性平衡
 """
 
 NOVELTY_SYSTEM_MSG = """You are an expert code reviewer tasked with determining if two code snippets are meaningfully different from each other.

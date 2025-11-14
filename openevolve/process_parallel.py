@@ -1,5 +1,6 @@
 """
 Process-based parallel controller for true parallelism
+进程级并行执行层，管理子进程生命周期、资源限制与容错恢复。
 """
 
 import asyncio

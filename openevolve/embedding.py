@@ -1,6 +1,7 @@
 """
 Adapted from SakanaAI/ShinkaEvolve (Apache-2.0 License)
 Original source: https://github.com/SakanaAI/ShinkaEvolve/blob/main/shinka/llm/embedding.py
+向量嵌入相关封装，支撑语义检索或相似度判断
 """
 
 import os

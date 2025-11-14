@@ -1,5 +1,6 @@
 """
 Main controller for OpenEvolve
+“核心引擎”：演化调度器，统筹多岛多世代的演化循环、任务分发与状态同步
 """
 
 import asyncio
@@ -241,10 +242,12 @@ class OpenEvolve:
         Returns:
             Best program found
         """
+        # 根据外部入参或配置决定最大迭代轮次
         max_iterations = iterations or self.config.max_iterations
 
         # Determine starting iteration
         start_iteration = 0
+        # 如果指定了 checkpoint，优先从快照恢复
         if checkpoint_path and os.path.exists(checkpoint_path):
             self._load_checkpoint(checkpoint_path)
             start_iteration = self.database.last_iteration + 1
@@ -262,14 +265,16 @@ class OpenEvolve:
         )
 
         if should_add_initial:
+            # 首次运行时，将初始程序评估后写入数据库，作为种群基准
             logger.info("Adding initial program to database")
             initial_program_id = str(uuid.uuid4())
 
-            # Evaluate the initial program
+            # 1. Evaluate the initial program
             initial_metrics = await self.evaluator.evaluate_program(
                 self.initial_program_code, initial_program_id
             )
 
+            # 2. Create the initial program object
             initial_program = Program(
                 id=initial_program_id,
                 code=self.initial_program_code,
@@ -304,6 +309,7 @@ class OpenEvolve:
 
         # Initialize improved parallel processing
         try:
+            # 构建并行控制器，负责调度子进程执行、打分与迁移
             self.parallel_controller = ProcessParallelController(
                 self.config, self.evaluation_file, self.database, self.evolution_tracer,
                 file_suffix=self.config.file_suffix
@@ -347,6 +353,7 @@ class OpenEvolve:
         finally:
             # Clean up parallel processing resources
             if self.parallel_controller:
+                # 主循环退出后确保子进程与资源被释放
                 self.parallel_controller.stop()
                 self.parallel_controller = None
             
@@ -367,6 +374,7 @@ class OpenEvolve:
 
         # Check if there's a better program by combined_score that wasn't tracked
         if best_program and "combined_score" in best_program.metrics:
+            # 再次确认 combined_score 维度上是否存在更优解，防止追踪遗漏
             best_by_combined = self.database.get_best_program(metric="combined_score")
             if (
                 best_by_combined

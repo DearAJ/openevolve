@@ -3,6 +3,8 @@ Evolution trace logging for OpenEvolve
 
 This module provides functionality to log detailed traces of program evolution,
 capturing state-action-reward transitions for RL training and analysis.
+
+记录演化轨迹、单次迭代的元数据，支持复盘与可视化0
 """
 
 import json

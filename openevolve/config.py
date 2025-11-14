@@ -1,5 +1,6 @@
 """
 Configuration handling for OpenEvolve
+配置体系，负责读取合并 YAML/CLI 配置、校验参数并向各子系统注入设置
 """
 
 import os

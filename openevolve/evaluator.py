@@ -1,5 +1,6 @@
 """
 Evaluation system for OpenEvolve
+统一评测流程，执行用户定义的 evaluator、收集打分/日志，并包装成结构化结果
 """
 
 import asyncio
@@ -187,6 +188,7 @@ class Evaluator:
                 # Add LLM feedback if configured
                 llm_eval_result = None
                 if self.config.use_llm_feedback and self.llm_ensemble:
+                    # LLM 评委模式：请求模型评分并加权融合
                     llm_result = await self._llm_evaluate(program_code, program_id=program_id)
                     llm_eval_result = self._process_evaluation_result(llm_result)
 
@@ -222,6 +224,7 @@ class Evaluator:
                     )
                     and program_id
                 ):
+                    # 延迟写入数据库：先缓存 artifacts，等待调度层统一落盘
                     if program_id not in self._pending_artifacts:
                         self._pending_artifacts[program_id] = {}
 
@@ -326,6 +329,7 @@ class Evaluator:
         Returns:
             Artifacts dictionary or None if not found
         """
+        # 采用 pop 保证同一个 program 的工件只被消费一次
         return self._pending_artifacts.pop(program_id, None)
 
     async def _direct_evaluate(
@@ -423,6 +427,7 @@ class Evaluator:
             if not self._passes_threshold(
                 stage1_eval_result.metrics, self.config.cascade_thresholds[0]
             ):
+                # 未达标直接返回 stage1 结果，避免进入更重的关卡
                 return stage1_eval_result
 
             # Check if second stage exists
@@ -563,6 +568,7 @@ class Evaluator:
 
         try:
             # Create prompt for LLM
+            # 将数据库中配置的特征维度注入提示词，使模型评分与 MAP-Elites 维度对齐
             feature_dimensions = self.database.config.feature_dimensions if self.database else []
             prompt = self.prompt_sampler.build_prompt(
                 current_program=program_code,
@@ -571,12 +577,14 @@ class Evaluator:
             )
 
             # Get LLM response
+            # 逐个模型生成评分，保留 system/user 上下文结构
             responses = await self.llm_ensemble.generate_all_with_context(
                 prompt["system"], [{"role": "user", "content": prompt["user"]}]
             )
 
             # Log prompt and response to database
             if self.database and program_id:
+                # 将评测提示与回复持久化，方便后续可视化或追溯
                 self.database.log_prompt(
                     program_id=program_id,
                     template_key="evaluation",
@@ -621,6 +629,7 @@ class Evaluator:
                     weight = self.llm_ensemble.weights[i] if self.llm_ensemble.weights else 1.0
 
                     # Average the metrics
+                    # 使用模型权重进行加权平均，以体现 ensemble 配置
                     for name, value in metrics.items():
                         if name in avg_metrics:
                             avg_metrics[name] += value * weight
@@ -659,6 +668,7 @@ class Evaluator:
             "error_type": type(error).__name__,
             "error_message": str(error),
             "timestamp": time.time(),
+            # 记录当前 cascade 配置，便于追踪不同阶段的配置差异
             "cascade_config": self.config.cascade_evaluation,
             "cascade_thresholds": getattr(self.config, "cascade_thresholds", []),
             "timeout_config": self.config.timeout,
@@ -686,6 +696,7 @@ class Evaluator:
         if "combined_score" in metrics:
             score = metrics.get("combined_score")
             if isinstance(score, (int, float)):
+                # 与 MAP-Elites 主指标对齐，支持直接比较
                 return float(score) >= threshold
 
         # Fallback: average all numeric metrics except 'error'
@@ -695,6 +706,7 @@ class Evaluator:
             # Skip 'error' keys and ensure values are numeric
             if name != "error" and isinstance(value, (int, float)):
                 try:
+                    # 将所有分数转换成 float，避免 numpy 类型或 Fraction 导致比较异常
                     valid_metrics.append(float(value))
                 except (TypeError, ValueError):
                     logger.warning(f"Skipping non-numeric metric: {name}={value}")

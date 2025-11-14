@@ -1,5 +1,6 @@
 """
 Command-line interface for OpenEvolve
+命令行入口，解析参数、加载配置并启动整套进化流程
 """
 
 import argparse

@@ -1,0 +1,34 @@
+max_iterations: 100
+log_level: "INFO"
+
+llm:
+  api_base: "http://127.0.0.1:30003/v1"
+  api_key: "EMPTY"        # sglang 不校验，可用任意占位符
+  temperature: 0.7
+  top_p: 0.95
+  max_tokens: 2048
+  timeout: 120
+  retries: 2
+  retry_delay: 5
+
+  models:
+    - name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"   # 与 curl /get_model_info 返回一致
+      weight: 1.0
+      system_message: "You are an expert code evolution assistant."
+
+  evaluator_models:
+    - name: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+      weight: 1.0
+
+prompt:
+  system_message: "You are an expert coder helping to evolve programs."
+  evaluator_system_message: "You are an expert code reviewer."
+
+database:
+  in_memory: true
+  log_prompts: true
+
+evaluator:
+  timeout: 300
+  parallel_evaluations: 1
+  use_llm_feedback: false

@@ -1,5 +1,6 @@
 """
 Program database for OpenEvolve
+持久化层，用于保存个体、工件与指标
 """
 
 import base64
